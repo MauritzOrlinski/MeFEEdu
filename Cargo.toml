@@ -1,0 +1,8 @@
+[package]
+name = "FEedu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+raylib = "5.5.1"
+sprs = "0.11.3"
