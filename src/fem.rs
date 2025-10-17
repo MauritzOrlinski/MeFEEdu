@@ -40,7 +40,7 @@ pub enum Material {
 }
 
 impl Material {
-    fn young_modulus(&self) -> f64 {
+    pub fn young_modulus(&self) -> f64 {
         (match self {
             Self::Diamond => 1050.0,
             Self::Wood => 9.5,
@@ -52,9 +52,10 @@ impl Material {
 }
 
 pub struct BeamStructure {
-    points: Vec<Vector2>,
-    conections: Vec<(usize, usize)>,
-    dirichlet_points: HashSet<usize>,
+    pub points: Vec<Vector2>,
+    pub conections: Vec<(usize, usize)>,
+    pub dirichlet_points: HashSet<usize>,
+    pub material: Material,
 }
 
 pub fn fe(

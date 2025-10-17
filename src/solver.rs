@@ -1,4 +1,6 @@
 use crate::fem::BeamStructure;
+use raylib::math::Vector2;
+use sprs::CsMat;
 /**
 * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
 *
@@ -15,15 +17,95 @@ use crate::fem::BeamStructure;
 *
 * For the matrix a CSR representation is choosen
 */
-use sprs::CsMat;
+
+const DOG_PER_NODE: usize = 2;
 
 pub struct StiffnessMatrix {
     matrix: CsMat<f64>,
 }
 
+fn rot_matrix(theta: f32) -> CsMat<f64> {
+    let c = f32::cos(theta) as f64;
+    let s = f32::sin(theta) as f64;
+
+    let c2 = c * c;
+    let s2 = s * s;
+    let cs = c * s;
+
+    let matrix = ndarray::arr2(&[[c2, cs], [cs, s2]]);
+
+    CsMat::csr_from_dense((&matrix).into(), 0.0)
+}
+
+fn signed_angle_2d(a: Vector2, b: Vector2) -> f32 {
+    // https://wumbo.net/formulas/angle-between-two-vectors-2d/
+    // since we just want (1,0) we can simplify a little
+    let vec = a - b;
+    f32::atan2(-vec.y, vec.x)
+}
+
+fn place_matrix(source: &CsMat<f64>, target: &mut CsMat<f64>, row: usize, col: usize) {
+    let (width, height) = source.shape();
+
+    for i in row..row + width {
+        for j in col..col + height {
+            let old = *target.get(i, j).unwrap_or(&0.);
+            target.set(i, j, old + *source.get(i, j).unwrap_or(&0.));
+        }
+    }
+}
+
 impl From<BeamStructure> for StiffnessMatrix {
-    fn from(value: BeamStructure) -> Self {
-        todo!()
+    fn from(beam_structure: BeamStructure) -> Self {
+        let cross = 1.;
+
+        let mat_size = DOG_PER_NODE * beam_structure.points.len();
+
+        let mut matrix: CsMat<f64> = CsMat::zero((mat_size, mat_size));
+
+        for (a, b) in beam_structure.conections {
+            let point_a = beam_structure.points[a];
+            let point_b = beam_structure.points[b];
+            let length = point_a.distance_to(point_b);
+
+            let stiffness = beam_structure.material.young_modulus() * cross / length as f64;
+
+            let beam_angle = signed_angle_2d(point_a, point_b);
+
+            let mut local_matrix = rot_matrix(beam_angle);
+            local_matrix *= stiffness;
+
+            let mut inv_local_matrix = local_matrix.clone();
+            inv_local_matrix *= -1.;
+
+            place_matrix(
+                &local_matrix,
+                &mut matrix,
+                a * DOG_PER_NODE,
+                a * DOG_PER_NODE,
+            );
+            place_matrix(
+                &local_matrix,
+                &mut matrix,
+                b * DOG_PER_NODE,
+                b * DOG_PER_NODE,
+            );
+
+            place_matrix(
+                &inv_local_matrix,
+                &mut matrix,
+                a * DOG_PER_NODE,
+                b * DOG_PER_NODE,
+            );
+            place_matrix(
+                &inv_local_matrix,
+                &mut matrix,
+                b * DOG_PER_NODE,
+                a * DOG_PER_NODE,
+            );
+        }
+
+        Self { matrix }
     }
 }
 
