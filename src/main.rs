@@ -1,4 +1,6 @@
+mod fem;
 mod solver;
+
 use raylib::prelude::*;
 
 use crate::solver::StiffnessMatrix;

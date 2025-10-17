@@ -1,7 +1,7 @@
 /**
 * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
-* We need to 
-* Discretize: 
+* We need to
+* Discretize:
 * Translate the User input into a 2d Mesh made up from triangles
 *
 *
@@ -14,5 +14,16 @@
 *   stiffness constants for the given Triangular Discretization
 * - u is the displacement vector \in R^n. It will be solved for
 */
+use crate::solver::StiffnessMatrix;
+use raylib::prelude::Vector2;
+struct Triangle(Vector2, Vector2, Vector2);
 
-!unimplemented!("Todo")
+pub struct TriangularMesh {
+    triangles: Vec<Triangle>,
+}
+
+impl TriangularMesh {
+    pub fn discretize() -> Self {
+        !unimplemented!("Todo")
+    }
+}
