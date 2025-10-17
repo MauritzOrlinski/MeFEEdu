@@ -17,7 +17,7 @@ use std::collections::{HashMap, HashSet};
 *   stiffness constants for the given Triangular Discretization
 * - u is the displacement vector \in R^n. It will be solved for
 */
-use crate::solver::StiffnessMatrix;
+use crate::solver::{self, DOG_PER_NODE, StiffnessMatrix};
 use raylib::prelude::Vector2;
 // struct Triangle(Vector2, Vector2, Vector2);
 //
@@ -54,7 +54,7 @@ impl Material {
 pub struct BeamStructure {
     pub points: Vec<Vector2>,
     pub conections: Vec<(usize, usize)>,
-    pub dirichlet_points: HashSet<usize>,
+    pub dbc: HashMap<usize, (Option<f64>, Option<f64>)>, // drichlet boundary conditions
     pub material: Material,
 }
 
@@ -64,8 +64,23 @@ pub fn fe(
     maximum_iterations: usize,
     error: f64,
 ) -> Vec<f64> {
+    // Set the forces equal to the boundary conditions
+    let mut f = forces.to_vec();
+    for i in beam_struct.dbc.keys() {
+        if let Some((u1, u2)) = beam_struct.dbc.get(i) {
+            if let &Some(x) = u1 {
+                f[2 * i] = x;
+            }
+            if let &Some(x) = u2 {
+                f[2 * i + 1] = x;
+            }
+        }
+    }
+    // Set up StiffnessMatrix form beam structure
     let stiffness_mat: StiffnessMatrix = beam_struct.into();
-    let mut u: Vec<f64> = vec![0.0; stiffness_mat.dim().0];
-    stiffness_mat.solve_gauss_seidel(forces, &mut u, maximum_iterations, error);
+    // set up problem vector
+    let mut u: Vec<f64> = vec![1.0; stiffness_mat.dim().0];
+    // solve for u using gauss seidel
+    stiffness_mat.solve_gauss_seidel(&f[..], &mut u, maximum_iterations, error);
     u
 }

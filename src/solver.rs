@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::fem::BeamStructure;
 use raylib::math::Vector2;
-use sprs::CsMat;
+use sprs::{CsMat, CsVecViewMut};
 /**
 * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
 *
@@ -18,7 +20,7 @@ use sprs::CsMat;
 * For the matrix a CSR representation is choosen
 */
 
-const DOG_PER_NODE: usize = 2;
+pub const DOG_PER_NODE: usize = 2;
 
 pub struct StiffnessMatrix {
     matrix: CsMat<f64>,
@@ -52,6 +54,16 @@ fn place_matrix(source: &CsMat<f64>, target: &mut CsMat<f64>, row: usize, col: u
             let old = *target.get(i, j).unwrap_or(&0.);
             target.set(i, j, old + *source.get(i, j).unwrap_or(&0.));
         }
+    }
+}
+
+pub fn apply_dbc(matrix: &mut CsMat<f64>, dbc: &HashMap<usize, (Option<f64>, Option<f64>)>) {
+    for &i in dbc.keys() {
+        for j in 0..matrix.rows() {
+            matrix.set(i, j, 0.0);
+            matrix.set(j, i, 0.0);
+        }
+        matrix.set(i, i, 1.0);
     }
 }
 
@@ -104,7 +116,7 @@ impl From<BeamStructure> for StiffnessMatrix {
                 a * DOG_PER_NODE,
             );
         }
-
+        apply_dbc(&mut matrix, &beam_structure.dbc);
         Self { matrix }
     }
 }
@@ -119,6 +131,7 @@ impl StiffnessMatrix {
     pub fn dim(&self) -> (usize, usize) {
         (self.matrix.outer_dims(), self.matrix.inner_dims())
     }
+
     /**
      * Solves/Approximates Problems of type a = M x with error < eps (or maximal number of
      * iteration steps)
@@ -143,6 +156,9 @@ impl StiffnessMatrix {
                     }
                 }
                 let temp = x[i];
+                if a_ii == 0.0 {
+                    return None;
+                }
                 x[i] = (b[i] - sigma) / a_ii;
                 if (x[i] - temp).abs() < eps {
                     return Some(iter);
