@@ -36,7 +36,7 @@ fn clicked_on_point(points: &Vec<Vector2>, pos: Vector2) -> bool {
 
 // Quick tryout of Raylib for setting up the mechanical structure
 fn main() {
-    let (mut rl, thread) = raylib::init().size(640, 480).title("Hello, World").build();
+    let (mut rl, thread) = raylib::init().size(1000, 800).title("").build();
     let mut points: Vec<Vector2> = vec![];
     let mut stable: Vec<Vector2> = vec![];
     let mut edges: Vec<(Vector2, Vector2)> = vec![];
