@@ -22,11 +22,12 @@ pub const DOG_PER_NODE: usize = 2;
 
 type Matrix = Array2<f64>;
 
+#[derive(Debug)]
 pub struct StiffnessMatrix {
     matrix: Matrix,
 }
 
-fn rot_matrix(theta: f32) -> Array2<f64> {
+fn rot_matrix(theta: f32) -> Matrix {
     let c = f32::cos(theta) as f64;
     let s = f32::sin(theta) as f64;
 
@@ -44,7 +45,7 @@ fn signed_angle_2d(a: Vector2, b: Vector2) -> f32 {
     f32::atan2(-vec.y, vec.x)
 }
 
-fn place_matrix(source: &Matrix, target: &mut Matrix, row: usize, col: usize) {
+fn add_region(source: &Matrix, target: &mut Matrix, row: usize, col: usize) {
     let (height, width) = source.dim();
 
     target
@@ -81,7 +82,7 @@ impl From<BeamStructure> for StiffnessMatrix {
 
         let mut matrix = Array2::<_>::zeros((mat_size, mat_size));
 
-        for (a, b) in beam_structure.conections {
+        for (a, b) in beam_structure.connections {
             let point_a = beam_structure.points[a];
             let point_b = beam_structure.points[b];
             let length = point_a.distance_to(point_b);
@@ -91,31 +92,33 @@ impl From<BeamStructure> for StiffnessMatrix {
             let beam_angle = signed_angle_2d(point_a, point_b);
 
             let mut local_matrix = rot_matrix(beam_angle);
+            println!("{local_matrix}");
+
             local_matrix *= stiffness;
 
             let mut inv_local_matrix = local_matrix.clone();
             inv_local_matrix *= -1.;
 
-            place_matrix(
+            add_region(
                 &local_matrix,
                 &mut matrix,
                 a * DOG_PER_NODE,
                 a * DOG_PER_NODE,
             );
-            place_matrix(
+            add_region(
                 &local_matrix,
                 &mut matrix,
                 b * DOG_PER_NODE,
                 b * DOG_PER_NODE,
             );
 
-            place_matrix(
+            add_region(
                 &inv_local_matrix,
                 &mut matrix,
                 a * DOG_PER_NODE,
                 b * DOG_PER_NODE,
             );
-            place_matrix(
+            add_region(
                 &inv_local_matrix,
                 &mut matrix,
                 b * DOG_PER_NODE,
@@ -172,5 +175,102 @@ impl StiffnessMatrix {
             }
         }
         Some(maximal_iteration)
+    }
+}
+
+#[cfg(test)]
+mod test_stiffness_matrix {
+    use std::collections::HashMap;
+
+    use raylib::math::Vector2;
+
+    use crate::{
+        fem::{BeamStructure, Material},
+        solver::{StiffnessMatrix, add_region, apply_dbc},
+    };
+
+    #[test]
+    fn test_add_region() {
+        const SIZE: usize = 5;
+        const SIZE2: usize = 3;
+        let mut target = ndarray::arr2(&[[1.; SIZE]; SIZE]);
+        let src = ndarray::arr2(&[[2.; SIZE2]; SIZE2]);
+
+        add_region(&src, &mut target, 1, 1);
+
+        println!("{target}");
+
+        assert!(
+            target
+                == ndarray::arr2(&[
+                    [1., 1., 1., 1., 1.],
+                    [1., 3., 3., 3., 1.],
+                    [1., 3., 3., 3., 1.],
+                    [1., 3., 3., 3., 1.],
+                    [1., 1., 1., 1., 1.]
+                ])
+        )
+    }
+
+    #[test]
+    fn test_apply_dbc() {
+        // we will have 3 nodes
+        const SIZE: usize = 6;
+
+        let mut dbc = HashMap::new();
+        // lock both x and y here
+        dbc.insert(0, (true, true));
+
+        // only lock y
+        dbc.insert(2, (false, true));
+
+        let mut matrix = ndarray::arr2(&[[5.; SIZE]; SIZE]);
+
+        apply_dbc(&mut matrix, &dbc);
+
+        // we lock x and y on index 0, so rows/cols 0*2 and 0*2+1 are 0, diagonal entries are 1
+        // we lock y on index 2, so row/col 2*2+1=5 is 0, diagonal entry is 1
+        let expected_result = ndarray::arr2(&[
+            [1., 0., 0., 0., 0., 0.],
+            [0., 1., 0., 0., 0., 0.],
+            [0., 0., 5., 5., 5., 0.],
+            [0., 0., 5., 5., 5., 0.],
+            [0., 0., 5., 5., 5., 0.],
+            [0., 0., 0., 0., 0., 1.],
+        ]);
+
+        println!("{matrix}");
+        assert!(expected_result == matrix);
+    }
+
+    #[test]
+    fn test_stiffness_matrix_single_beam() {
+        let points: Vec<_> = ([(0., 0.), (1., 0.)])
+            .iter()
+            .map(|(x, y)| Vector2::new(*x, *y))
+            .collect();
+
+        let connections = vec![(0, 1)];
+        let dbc: HashMap<usize, (bool, bool)> = HashMap::new();
+
+        // values taken from https://www.youtube.com/watch?v=9bnFVE88PaM
+        // we don't support setting the cross section yet, so pretend the material is much weaker
+        // than it actually is and assume a 1m^2 cross section
+        let material = Material::Custom(200. * 0.01);
+
+        let beam_struct = BeamStructure {
+            points,
+            connections,
+            dbc,
+            material,
+        };
+
+        println!("{beam_struct:?}");
+
+        let stiff_mat: StiffnessMatrix = beam_struct.into();
+
+        println!("{stiff_mat:?}");
+
+        panic!()
     }
 }

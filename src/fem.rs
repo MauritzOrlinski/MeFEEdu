@@ -1,5 +1,5 @@
 use core::f64;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /**
 * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
@@ -31,12 +31,15 @@ use raylib::prelude::Vector2;
 //     }
 // }
 
+#[derive(Debug)]
 pub enum Material {
     Diamond,
     Wood,
     PET,
     LPDE,
     HighStrengthConcrete,
+    /// Custom material used for testing. Value is given in GPa
+    Custom(f64),
 }
 
 impl Material {
@@ -47,13 +50,16 @@ impl Material {
             Self::PET => f64::consts::PI,
             Self::HighStrengthConcrete => 30.0,
             Self::LPDE => 0.228,
-        }) * 10E9
+            Self::Custom(ym) => *ym,
+            // this evaluates to 10^9. WHY???!??!?!?
+        }) * 10E8
     }
 }
 
+#[derive(Debug)]
 pub struct BeamStructure {
     pub points: Vec<Vector2>,
-    pub conections: Vec<(usize, usize)>,
+    pub connections: Vec<(usize, usize)>,
     pub dbc: HashMap<usize, (bool, bool)>, // drichlet boundary conditions
     pub material: Material,
 }
