@@ -5,5 +5,4 @@ edition = "2024"
 
 [dependencies]
 raylib = "5.5.1"
-sprs = "0.11.3"
 ndarray = "0.16.1"

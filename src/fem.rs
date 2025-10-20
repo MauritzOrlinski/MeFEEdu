@@ -54,7 +54,7 @@ impl Material {
 pub struct BeamStructure {
     pub points: Vec<Vector2>,
     pub conections: Vec<(usize, usize)>,
-    pub dbc: HashMap<usize, (Option<f64>, Option<f64>)>, // drichlet boundary conditions
+    pub dbc: HashMap<usize, (bool, bool)>, // drichlet boundary conditions
     pub material: Material,
 }
 
@@ -68,11 +68,11 @@ pub fn fe(
     let mut f = forces.to_vec();
     for i in beam_struct.dbc.keys() {
         if let Some((u1, u2)) = beam_struct.dbc.get(i) {
-            if let &Some(x) = u1 {
-                f[2 * i] = x;
+            if *u1 {
+                f[2 * i] = 0.;
             }
-            if let &Some(x) = u2 {
-                f[2 * i + 1] = x;
+            if *u2 {
+                f[2 * i + 1] = 0.;
             }
         }
     }

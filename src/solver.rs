@@ -1,32 +1,32 @@
 use std::collections::HashMap;
 
 use crate::fem::BeamStructure;
+use ndarray::{Array2, s};
 use raylib::math::Vector2;
-use sprs::{CsMat, CsVecViewMut};
-/**
-* Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
-*
-* Basic Idea:
-* f = K u
-* where:
-* - f is the vector of forces \in R^n. f is given by the user setting forces that effect specific
-*   nodes
-* - K is the Stiffness matrix in \in R^(n x n). K can be computed by the spring equations and
-*   stiffness constants for the given Triangular Discretization
-* - u is the displacement vector \in R^n. It will be solved for
-*
-* Due to the big size of the Matrix a Gauss Seidel method is used instead of solving the full LSE
-*
-* For the matrix a CSR representation is choosen
-*/
+// * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
+// *
+// * Basic Idea:
+// * f = K u
+// * where:
+// * - f is the vector of forces \in R^n. f is given by the user setting forces that effect specific
+// *   nodes
+// * - K is the Stiffness matrix in \in R^(n x n). K can be computed by the spring equations and
+// *   stiffness constants for the given Triangular Discretization
+// * - u is the displacement vector \in R^n. It will be solved for
+// *
+// * Due to the big size of the Matrix a Gauss Seidel method is used instead of solving the full LSE
+// *
+// * For the matrix a CSR representation is choosen
 
 pub const DOG_PER_NODE: usize = 2;
 
+type Matrix = Array2<f64>;
+
 pub struct StiffnessMatrix {
-    matrix: CsMat<f64>,
+    matrix: Matrix,
 }
 
-fn rot_matrix(theta: f32) -> CsMat<f64> {
+fn rot_matrix(theta: f32) -> Array2<f64> {
     let c = f32::cos(theta) as f64;
     let s = f32::sin(theta) as f64;
 
@@ -34,9 +34,7 @@ fn rot_matrix(theta: f32) -> CsMat<f64> {
     let s2 = s * s;
     let cs = c * s;
 
-    let matrix = ndarray::arr2(&[[c2, cs], [cs, s2]]);
-
-    CsMat::csr_from_dense((&matrix).into(), 0.0)
+    ndarray::arr2(&[[c2, cs], [cs, s2]])
 }
 
 fn signed_angle_2d(a: Vector2, b: Vector2) -> f32 {
@@ -46,24 +44,32 @@ fn signed_angle_2d(a: Vector2, b: Vector2) -> f32 {
     f32::atan2(-vec.y, vec.x)
 }
 
-fn place_matrix(source: &CsMat<f64>, target: &mut CsMat<f64>, row: usize, col: usize) {
-    let (width, height) = source.shape();
+fn place_matrix(source: &Matrix, target: &mut Matrix, row: usize, col: usize) {
+    let (height, width) = source.dim();
 
-    for i in row..row + width {
-        for j in col..col + height {
-            let old = *target.get(i, j).unwrap_or(&0.);
-            target.set(i, j, old + *source.get(i, j).unwrap_or(&0.));
-        }
-    }
+    target
+        .slice_mut(s![row..row + height, col..col + width])
+        .iter_mut()
+        .zip(source)
+        .for_each(|(target, src)| *target += *src);
 }
 
-pub fn apply_dbc(matrix: &mut CsMat<f64>, dbc: &HashMap<usize, (Option<f64>, Option<f64>)>) {
-    for &i in dbc.keys() {
-        for j in 0..matrix.rows() {
-            matrix.set(i, j, 0.0);
-            matrix.set(j, i, 0.0);
+fn apply_constraint(matrix: &mut Matrix, index: usize) {
+    matrix.row_mut(index).fill(0.);
+    matrix.column_mut(index).fill(0.);
+
+    matrix[[index, index]] = 1.;
+}
+
+pub fn apply_dbc(matrix: &mut Matrix, dbc: &HashMap<usize, (bool, bool)>) {
+    for (iter, (x_const, y_const)) in dbc.iter() {
+        if *x_const {
+            apply_constraint(matrix, *iter * 2);
         }
-        matrix.set(i, i, 1.0);
+
+        if *y_const {
+            apply_constraint(matrix, *iter * 2 + 1);
+        }
     }
 }
 
@@ -73,7 +79,7 @@ impl From<BeamStructure> for StiffnessMatrix {
 
         let mat_size = DOG_PER_NODE * beam_structure.points.len();
 
-        let mut matrix: CsMat<f64> = CsMat::zero((mat_size, mat_size));
+        let mut matrix = Array2::<_>::zeros((mat_size, mat_size));
 
         for (a, b) in beam_structure.conections {
             let point_a = beam_structure.points[a];
@@ -121,15 +127,15 @@ impl From<BeamStructure> for StiffnessMatrix {
     }
 }
 
-impl From<CsMat<f64>> for StiffnessMatrix {
-    fn from(value: CsMat<f64>) -> Self {
+impl From<Matrix> for StiffnessMatrix {
+    fn from(value: Matrix) -> Self {
         StiffnessMatrix { matrix: value }
     }
 }
 
 impl StiffnessMatrix {
     pub fn dim(&self) -> (usize, usize) {
-        (self.matrix.outer_dims(), self.matrix.inner_dims())
+        self.matrix.dim()
     }
 
     /**
@@ -146,9 +152,9 @@ impl StiffnessMatrix {
         // compute Gauss Seidel: https://en.wikipedia.org/wiki/Gauss%E2%80%93Seidel_method
         for iter in 0..maximal_iteration {
             let mut a_ii: f64 = 0.0;
-            for (i, row) in self.matrix.outer_iterator().enumerate() {
+            for (i, row) in self.matrix.rows().into_iter().enumerate() {
                 let mut sigma: f64 = 0.0;
-                for (j, &v) in row.iter() {
+                for (j, &v) in row.iter().enumerate() {
                     if i != j {
                         sigma += v * x[j];
                     } else {
