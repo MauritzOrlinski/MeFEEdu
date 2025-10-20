@@ -40,8 +40,8 @@ fn rot_matrix(theta: f64) -> Matrix {
 fn signed_angle_2d(a: &Vector2, b: &Vector2) -> f64 {
     // https://wumbo.net/formulas/angle-between-two-vectors-2d/
     // since we just want (1,0) we can simplify a little
-    let vec = a - b;
-    f64::atan2(-vec.y, vec.x)
+    let vec = b - a;
+    f64::atan2(vec.y, vec.x)
 }
 
 fn add_region(source: &Matrix, target: &mut Matrix, row: usize, col: usize) {
