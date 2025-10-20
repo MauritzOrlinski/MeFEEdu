@@ -1,5 +1,6 @@
 mod fem;
 mod solver;
+mod vector2;
 
 use raylib::prelude::*;
 

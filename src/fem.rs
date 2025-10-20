@@ -17,8 +17,7 @@ use std::collections::HashMap;
 *   stiffness constants for the given Triangular Discretization
 * - u is the displacement vector \in R^n. It will be solved for
 */
-use crate::solver::{self, DOG_PER_NODE, StiffnessMatrix};
-use raylib::prelude::Vector2;
+use crate::{solver::StiffnessMatrix, vector2::Vector2};
 // struct Triangle(Vector2, Vector2, Vector2);
 //
 // pub struct TriangularMesh {

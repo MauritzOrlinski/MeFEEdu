@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
-use crate::fem::BeamStructure;
+use crate::{fem::BeamStructure, vector2::Vector2};
 use ndarray::{Array2, s};
-use raylib::math::Vector2;
 // * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
 // *
 // * Basic Idea:
@@ -27,9 +26,9 @@ pub struct StiffnessMatrix {
     matrix: Matrix,
 }
 
-fn rot_matrix(theta: f32) -> Matrix {
-    let c = f32::cos(theta) as f64;
-    let s = f32::sin(theta) as f64;
+fn rot_matrix(theta: f64) -> Matrix {
+    let c = f64::cos(theta);
+    let s = f64::sin(theta);
 
     let c2 = c * c;
     let s2 = s * s;
@@ -38,11 +37,11 @@ fn rot_matrix(theta: f32) -> Matrix {
     ndarray::arr2(&[[c2, cs], [cs, s2]])
 }
 
-fn signed_angle_2d(a: Vector2, b: Vector2) -> f32 {
+fn signed_angle_2d(a: &Vector2, b: &Vector2) -> f64 {
     // https://wumbo.net/formulas/angle-between-two-vectors-2d/
     // since we just want (1,0) we can simplify a little
     let vec = a - b;
-    f32::atan2(-vec.y, vec.x)
+    f64::atan2(-vec.y, vec.x)
 }
 
 fn add_region(source: &Matrix, target: &mut Matrix, row: usize, col: usize) {
@@ -83,11 +82,11 @@ impl From<BeamStructure> for StiffnessMatrix {
         let mut matrix = Array2::<_>::zeros((mat_size, mat_size));
 
         for (a, b) in beam_structure.connections {
-            let point_a = beam_structure.points[a];
-            let point_b = beam_structure.points[b];
+            let point_a = &beam_structure.points[a];
+            let point_b = &beam_structure.points[b];
             let length = point_a.distance_to(point_b);
 
-            let stiffness = beam_structure.material.young_modulus() * cross / length as f64;
+            let stiffness = beam_structure.material.young_modulus() * cross / length;
 
             let beam_angle = signed_angle_2d(point_a, point_b);
 
@@ -182,11 +181,11 @@ impl StiffnessMatrix {
 mod test_stiffness_matrix {
     use std::collections::HashMap;
 
-    use raylib::math::Vector2;
 
     use crate::{
         fem::{BeamStructure, Material},
         solver::{StiffnessMatrix, add_region, apply_dbc},
+        vector2::Vector2,
     };
 
     #[test]

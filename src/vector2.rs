@@ -1,0 +1,64 @@
+use std::ops::{Add, Mul, Sub};
+
+#[derive(Debug)]
+pub struct Vector2 {
+    pub x: f64,
+    pub y: f64,
+}
+
+impl Vector2 {
+    pub fn new(x: f64, y: f64) -> Self {
+        Self { x, y }
+    }
+
+    pub fn distance_to(&self, other: &Self) -> f64 {
+        ((self.x - other.x).powi(2) + (self.y - other.y).powi(2)).sqrt()
+    }
+}
+
+impl PartialEq for Vector2 {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
+impl Add for &Vector2 {
+    type Output = Vector2;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Mul<f64> for &Vector2 {
+    type Output = Vector2;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vector2 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl Mul<Vector2> for f64 {
+    type Output = Vector2;
+
+    fn mul(self, rhs: Vector2) -> Self::Output {
+        Vector2 {
+            x: rhs.x * self,
+            y: rhs.y * self,
+        }
+    }
+}
+
+impl Sub for &Vector2 {
+    type Output = Vector2;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        self + &(rhs * -1.)
+    }
+}
