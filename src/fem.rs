@@ -50,8 +50,7 @@ impl Material {
             Self::HighStrengthConcrete => 30.0,
             Self::LPDE => 0.228,
             Self::Custom(ym) => *ym,
-            // this evaluates to 10^9. WHY???!??!?!?
-        }) * 10E8
+        }) * 1E9
     }
 }
 
