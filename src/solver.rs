@@ -152,7 +152,7 @@ impl StiffnessMatrix {
     ) -> Option<usize> {
         // compute Gauss Seidel: https://en.wikipedia.org/wiki/Gauss%E2%80%93Seidel_method
         for iter in 0..maximal_iteration {
-            println!("{:?}", x);
+            println!("{x:?}");
             let mut a_ii: f64 = 0.0;
             let mut max_err: f64 = 0.0;
             for (i, row) in self.matrix.rows().into_iter().enumerate() {

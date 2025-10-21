@@ -36,8 +36,8 @@ use crate::{solver::StiffnessMatrix, vector2::Vector2};
 pub enum Material {
     Diamond,
     Wood,
-    PET,
-    LPDE,
+    Pet,
+    Lpde,
     HighStrengthConcrete,
     /// Custom material used for testing. Value is given in GPa
     Custom(f64),
@@ -48,9 +48,9 @@ impl Material {
         (match self {
             Self::Diamond => 1050.0,
             Self::Wood => 9.5,
-            Self::PET => f64::consts::PI,
+            Self::Pet => f64::consts::PI,
             Self::HighStrengthConcrete => 30.0,
-            Self::LPDE => 0.228,
+            Self::Lpde => 0.228,
             Self::Custom(ym) => *ym,
         }) * 1E9
     }

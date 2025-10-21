@@ -9,7 +9,6 @@ use raylib::prelude::RaylibDraw;
 use raylib::prelude::RaylibMode2DExt;
 use raylib::prelude::Vector2 as RaylibVector2;
 use raylib::{prelude::Color, prelude::RaylibDrawHandle};
-use serde::{Deserialize, Serialize};
 use std::fs;
 use vector2::Vector2;
 
@@ -69,7 +68,7 @@ fn main() {
 
     let beam_sim: BeamSimulation = serde_json::from_str(&json_blob).unwrap();
     let solution = beam_sim.simulate(maximum_iterations, error_constraint);
-    println!("Displacements: {:?}", solution);
+    println!("Displacements: {solution:?}");
 
     let structure = beam_sim.structure;
     let displaced_points: Vec<Vector2> = (0..structure.points.len())
@@ -83,7 +82,7 @@ fn main() {
         .collect();
 
     let (mut rl, thread) = raylib::init().size(W, H).title("").build();
-    let mut camera = Camera2D {
+    let camera = Camera2D {
         offset: RaylibVector2::new((W / 2) as f32, (H / 2) as f32),
         target: RaylibVector2::new(0.0, 0.0),
         rotation: 0.0,
@@ -93,7 +92,7 @@ fn main() {
         let mut d = rl.begin_drawing(&thread);
 
         d.clear_background(BACKGROUND);
-        let mut mode = d.begin_mode2D(&camera);
+        let mut mode = d.begin_mode2D(camera);
         for &(a, b) in &structure.connections {
             mode.draw_line_v(
                 construct_ffi_vec(&displaced_points[a]),
