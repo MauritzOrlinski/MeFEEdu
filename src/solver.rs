@@ -37,7 +37,7 @@ fn rot_matrix(theta: f64) -> Matrix {
     ndarray::arr2(&[[c2, cs], [cs, s2]])
 }
 
-fn signed_angle_2d(a: &Vector2, b: &Vector2) -> f64 {
+fn signed_angle_2d(a: Vector2, b: Vector2) -> f64 {
     // https://wumbo.net/formulas/angle-between-two-vectors-2d/
     // since we just want (1,0) we can simplify a little
     let vec = b - a;
@@ -81,8 +81,8 @@ impl From<&BeamStructure> for StiffnessMatrix {
         let mut matrix = Array2::<_>::zeros((mat_size, mat_size));
 
         for &(a, b) in &beam_structure.connections {
-            let point_a = &beam_structure.points[a];
-            let point_b = &beam_structure.points[b];
+            let point_a = beam_structure.points[a];
+            let point_b = beam_structure.points[b];
             let length = point_a.distance_to(point_b);
 
             let stiffness = cross / length;

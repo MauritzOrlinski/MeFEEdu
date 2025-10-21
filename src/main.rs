@@ -73,10 +73,10 @@ fn main() {
     let structure = beam_sim.structure;
     let displaced_points: Vec<Vector2> = (0..structure.points.len())
         .map(|n| {
-            (&Vector2 {
+            (Vector2 {
                 x: solution[2 * n],
                 y: solution[2 * n + 1],
-            } + &structure.points[n])
+            } + structure.points[n])
                 * -1.0
         })
         .collect();
