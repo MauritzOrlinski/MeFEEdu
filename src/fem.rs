@@ -1,6 +1,8 @@
 use core::f64;
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 /**
 * Implementing the FEM for 2d mechanincal Problems using Triangular Discretization
 * We need to
@@ -30,7 +32,7 @@ use crate::{solver::StiffnessMatrix, vector2::Vector2};
 //     }
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Material {
     Diamond,
     Wood,
@@ -54,7 +56,7 @@ impl Material {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct BeamStructure {
     pub points: Vec<Vector2>,
     pub connections: Vec<(usize, usize)>,
@@ -62,29 +64,31 @@ pub struct BeamStructure {
     pub material: Material,
 }
 
-pub fn fe(
-    beam_struct: BeamStructure,
-    forces: &[f64],
-    maximum_iterations: usize,
-    error: f64,
-) -> Vec<f64> {
-    // Set the forces equal to the boundary conditions
-    let mut f = forces.to_vec();
-    for i in beam_struct.dbc.keys() {
-        if let Some((u1, u2)) = beam_struct.dbc.get(i) {
-            if *u1 {
-                f[2 * i] = 0.;
-            }
-            if *u2 {
-                f[2 * i + 1] = 0.;
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BeamSimulation {
+    pub structure: BeamStructure,
+    pub forces: Vec<f64>,
+}
+impl BeamSimulation {
+    pub fn simulate(&self, maximum_iterations: usize, error: f64) -> Vec<f64> {
+        // Set the forces equal to the boundary conditions
+        let mut f = self.forces.clone();
+        for i in self.structure.dbc.keys() {
+            if let Some((u1, u2)) = self.structure.dbc.get(i) {
+                if *u1 {
+                    f[2 * i] = 0.;
+                }
+                if *u2 {
+                    f[2 * i + 1] = 0.;
+                }
             }
         }
+        // Set up StiffnessMatrix form beam structure
+        let stiffness_mat: StiffnessMatrix = (&self.structure).into();
+        // set up problem vector
+        let mut u: Vec<f64> = vec![1.0; stiffness_mat.dim().0];
+        // solve for u using gauss seidel
+        stiffness_mat.solve_gauss_seidel(&f[..], &mut u, maximum_iterations, error);
+        u
     }
-    // Set up StiffnessMatrix form beam structure
-    let stiffness_mat: StiffnessMatrix = beam_struct.into();
-    // set up problem vector
-    let mut u: Vec<f64> = vec![1.0; stiffness_mat.dim().0];
-    // solve for u using gauss seidel
-    stiffness_mat.solve_gauss_seidel(&f[..], &mut u, maximum_iterations, error);
-    u
 }
