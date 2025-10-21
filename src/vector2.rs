@@ -1,11 +1,20 @@
-use std::ops::{Add, Mul, Sub};
-
+use raylib::core::math::Vector2 as RaylibVec2;
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Vector2 {
     pub x: f64,
     pub y: f64,
+}
+
+impl From<Vector2> for RaylibVec2 {
+    fn from(value: Vector2) -> Self {
+        RaylibVec2 {
+            x: value.x as f32,
+            y: value.y as f32,
+        }
+    }
 }
 
 impl Vector2 {
@@ -35,7 +44,29 @@ impl Add for &Vector2 {
     }
 }
 
+impl Add for Vector2 {
+    type Output = Vector2;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        Vector2 {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
 impl Mul<f64> for &Vector2 {
+    type Output = Vector2;
+
+    fn mul(self, rhs: f64) -> Self::Output {
+        Vector2 {
+            x: self.x * rhs,
+            y: self.y * rhs,
+        }
+    }
+}
+
+impl Mul<f64> for Vector2 {
     type Output = Vector2;
 
     fn mul(self, rhs: f64) -> Self::Output {
