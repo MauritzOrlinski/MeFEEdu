@@ -3,12 +3,15 @@ mod solver;
 mod vector2;
 
 use crate::fem::BeamSimulation;
+use crate::fem::BeamStructure;
 use clap::Parser;
+use raylib::camera;
 use raylib::prelude::Camera2D;
 use raylib::prelude::RaylibDraw;
 use raylib::prelude::RaylibMode2DExt;
 use raylib::prelude::Vector2 as RaylibVector2;
 use raylib::{prelude::Color, prelude::RaylibDrawHandle};
+use std::collections::HashMap;
 use std::fs;
 use vector2::Vector2;
 
@@ -33,6 +36,7 @@ const BACKGROUND: Color = Color::BLACK;
 const NODE_COLOR: Color = Color::BLUE;
 const EDGE_COLOR: Color = Color::WHITE;
 const STABLE_NODE_COLOR: Color = Color::RED;
+
 #[allow(dead_code)]
 fn draw_polygon_filled(d: &mut RaylibDrawHandle, points: &[RaylibVector2], color: Color) {
     if points.len() < 3 {
@@ -104,6 +108,49 @@ fn get_camera(
     }
 }
 
+fn draw_structure_fade<I, J>(
+    d: &mut RaylibDrawHandle,
+    points: &[Vector2],
+    connections: &[(usize, usize)],
+    camera: &Camera2D,
+    node_color: I,
+    edge_color: J,
+    fade: f32,
+) where
+    I: Fn(usize) -> Color,
+    J: Fn(usize) -> Color,
+{
+    for (n, &(a, b)) in connections.iter().enumerate() {
+        d.draw_line_v(
+            to_display_vector(&points[a]),
+            to_display_vector(&points[b]),
+            edge_color(n).lerp(BACKGROUND, fade),
+        );
+    }
+
+    for (n, v) in points.iter().enumerate() {
+        d.draw_circle_v(
+            to_display_vector(v),
+            RADIUS / camera.zoom,
+            node_color(n).lerp(BACKGROUND, fade),
+        );
+    }
+}
+
+fn draw_structure<I, J>(
+    d: &mut RaylibDrawHandle,
+    points: &[Vector2],
+    connections: &[(usize, usize)],
+    camera: &Camera2D,
+    node_color: I,
+    edge_color: J,
+) where
+    I: Fn(usize) -> Color,
+    J: Fn(usize) -> Color,
+{
+    draw_structure_fade(d, points, connections, camera, node_color, edge_color, 0.);
+}
+
 // Quick tryout of Raylib for setting up the mechanical structure
 fn main() {
     let Args {
@@ -148,50 +195,42 @@ fn main() {
         );
 
         let mut mode = d.begin_mode2D(camera);
-        for &(a, b) in &structure.connections {
-            mode.draw_line_v(
-                to_display_vector(&structure.points[a]),
-                to_display_vector(&structure.points[b]),
-                EDGE_COLOR.lerp(BACKGROUND, 0.75),
-            );
-        }
 
-        for (n, v) in structure.points.iter().enumerate() {
+        let node_color = |n| {
             if structure.dbc.contains_key(&n) {
-                mode.draw_circle_v(
-                    to_display_vector(v),
-                    RADIUS / camera.zoom,
-                    STABLE_NODE_COLOR.lerp(BACKGROUND, 0.75),
-                );
+                STABLE_NODE_COLOR
             } else {
-                mode.draw_circle_v(
-                    to_display_vector(v),
-                    RADIUS / camera.zoom,
-                    NODE_COLOR.lerp(BACKGROUND, 0.75),
-                );
+                NODE_COLOR
             }
-        }
+        };
+
+        draw_structure_fade(
+            &mut mode,
+            &structure.points,
+            &structure.connections,
+            &camera,
+            node_color,
+            |_| EDGE_COLOR,
+            if no_simulate { 0. } else { 0.66 },
+        );
 
         if !no_simulate {
-            for &(a, b) in &structure.connections {
-                mode.draw_line_v(
-                    to_display_vector(&displaced_points[a]),
-                    to_display_vector(&displaced_points[b]),
-                    EDGE_COLOR,
-                );
-            }
+            draw_structure(
+                &mut mode,
+                &displaced_points,
+                &structure.connections,
+                &camera,
+                node_color,
+                |n| {
+                    let (a, b) = structure.connections[n];
+                    let original_length = structure.points[a].distance_to(structure.points[b]);
+                    let displaced_length = displaced_points[a].distance_to(displaced_points[b]);
 
-            for (n, v) in displaced_points.iter().enumerate() {
-                if structure.dbc.contains_key(&n) {
-                    mode.draw_circle_v(
-                        to_display_vector(v),
-                        RADIUS / camera.zoom,
-                        STABLE_NODE_COLOR,
-                    );
-                } else {
-                    mode.draw_circle_v(to_display_vector(v), RADIUS / camera.zoom, NODE_COLOR);
-                }
-            }
+                    let diff = (original_length - displaced_length).abs();
+                    let ratio = diff / original_length;
+                    EDGE_COLOR.lerp(Color::RED, 50. * ratio.min(1.) as f32)
+                },
+            );
         }
     }
 }
