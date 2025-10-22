@@ -21,6 +21,8 @@ struct Args {
     maximum_iterations: usize,
     #[arg(short, long, default_value_t = 1E-15)]
     error_constraint: f64,
+    #[arg(short, long, default_value_t = false)]
+    no_simulate: bool,
 }
 
 const H: i32 = 1000;
@@ -102,12 +104,17 @@ fn main() {
         file_path,
         maximum_iterations,
         error_constraint,
+        no_simulate,
     } = Args::parse();
     let json_blob: String =
         fs::read_to_string(file_path).expect("Should have been able to read the file");
 
     let beam_sim: BeamSimulation = serde_json::from_str(&json_blob).unwrap();
-    let solution = beam_sim.simulate(maximum_iterations, error_constraint);
+    let solution = if !no_simulate {
+        beam_sim.simulate(maximum_iterations, error_constraint)
+    } else {
+        vec![]
+    };
     println!("Displacements: {solution:?}");
 
     let structure = beam_sim.structure;
@@ -151,19 +158,21 @@ fn main() {
             }
         }
 
-        for &(a, b) in &structure.connections {
-            mode.draw_line_v(
-                to_display(&displaced_points[a]),
-                to_display(&displaced_points[b]),
-                EDGE_COLOR,
-            );
-        }
+        if !no_simulate {
+            for &(a, b) in &structure.connections {
+                mode.draw_line_v(
+                    to_display(&displaced_points[a]),
+                    to_display(&displaced_points[b]),
+                    EDGE_COLOR,
+                );
+            }
 
-        for (n, v) in displaced_points.iter().enumerate() {
-            if structure.dbc.contains_key(&n) {
-                mode.draw_circle_v(to_display(v), RADIUS / camera.zoom, STABLE_NODE_COLOR);
-            } else {
-                mode.draw_circle_v(to_display(v), RADIUS / camera.zoom, NODE_COLOR);
+            for (n, v) in displaced_points.iter().enumerate() {
+                if structure.dbc.contains_key(&n) {
+                    mode.draw_circle_v(to_display(v), RADIUS / camera.zoom, STABLE_NODE_COLOR);
+                } else {
+                    mode.draw_circle_v(to_display(v), RADIUS / camera.zoom, NODE_COLOR);
+                }
             }
         }
     }
