@@ -58,28 +58,30 @@ fn to_display(v: &vector2::Vector2) -> raylib::ffi::Vector2 {
     }
 }
 
-fn get_camera<'a, I>(mut points: I) -> Camera2D
+fn get_point_cloud_extents<'a, I>(mut points: I) -> (f64, f64, f64, f64)
 where
     I: Iterator<Item = &'a Vector2>,
 {
     let first = points
         .next()
-        .expect("Point list must at least contain one point");
+        .expect("Point cloud must at least contain one point");
 
-    let (x_axis, y_axis) = points.fold(
-        ((first.x, first.x), (first.y, first.y)),
-        |((x_min, x_max), (y_min, y_max)), point| {
+    points.fold(
+        (first.x, first.x, first.y, first.y),
+        |(x_min, x_max, y_min, y_max), point| {
             (
-                (x_min.min(point.x), x_max.max(point.x)),
-                (y_min.min(point.y), y_max.max(point.y)),
+                x_min.min(point.x),
+                x_max.max(point.x),
+                y_min.min(point.y),
+                y_max.max(point.y),
             )
         },
-    );
+    )
+}
 
-    let (x_min, x_max) = x_axis;
+fn get_camera((x_min, x_max, y_min, y_max): (f64, f64, f64, f64)) -> Camera2D {
     let x_extent = x_max - x_min;
 
-    let (y_min, y_max) = y_axis;
     let y_extent = y_max - y_min;
     let max_x_zoom = (W as f64) / x_extent;
     let max_y_zoom = (H as f64) / y_extent;
@@ -125,13 +127,17 @@ fn main() {
         .map(|(values, &vector)| vector + Vector2::new(values[0], values[1]))
         .collect();
 
-    let (mut rl, thread) = raylib::init().size(W, H).title("").build();
+    let (mut rl, thread) = raylib::init().size(W, H).title("").resizable().build();
 
-    let camera = get_camera(displaced_points.iter().chain(structure.points.iter()));
+    let structure_extents =
+        get_point_cloud_extents(displaced_points.iter().chain(structure.points.iter()));
+
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
 
         d.clear_background(BACKGROUND);
+
+        let camera = get_camera(structure_extents);
 
         let mut mode = d.begin_mode2D(camera);
         for &(a, b) in &structure.connections {
