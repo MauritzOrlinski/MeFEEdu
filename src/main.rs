@@ -51,7 +51,7 @@ fn draw_polygon_filled(d: &mut RaylibDrawHandle, points: &[RaylibVector2], color
     }
 }
 
-fn to_display(v: &vector2::Vector2) -> raylib::ffi::Vector2 {
+fn to_display_vector(v: &vector2::Vector2) -> raylib::ffi::Vector2 {
     raylib::ffi::Vector2 {
         x: v.x as f32,
         y: -v.y as f32,
@@ -79,12 +79,16 @@ where
     )
 }
 
-fn get_camera((x_min, x_max, y_min, y_max): (f64, f64, f64, f64)) -> Camera2D {
+fn get_camera(
+    (x_min, x_max, y_min, y_max): (f64, f64, f64, f64),
+    width: i32,
+    height: i32,
+) -> Camera2D {
     let x_extent = x_max - x_min;
 
     let y_extent = y_max - y_min;
-    let max_x_zoom = (W as f64) / x_extent;
-    let max_y_zoom = (H as f64) / y_extent;
+    let max_x_zoom = (width as f64) / x_extent;
+    let max_y_zoom = (height as f64) / y_extent;
 
     let zoom = max_y_zoom.min(max_x_zoom) as f32;
     let position = RaylibVector2::new(
@@ -94,7 +98,7 @@ fn get_camera((x_min, x_max, y_min, y_max): (f64, f64, f64, f64)) -> Camera2D {
 
     Camera2D {
         target: position,
-        offset: RaylibVector2::new(W as f32 / 2., H as f32 / 2.),
+        offset: RaylibVector2::new(width as f32 / 2., height as f32 / 2.),
         rotation: 0.,
         zoom: (zoom * 0.9),
     }
@@ -137,13 +141,17 @@ fn main() {
 
         d.clear_background(BACKGROUND);
 
-        let camera = get_camera(structure_extents);
+        let camera = get_camera(
+            structure_extents,
+            d.get_screen_width(),
+            d.get_screen_height(),
+        );
 
         let mut mode = d.begin_mode2D(camera);
         for &(a, b) in &structure.connections {
             mode.draw_line_v(
-                to_display(&structure.points[a]),
-                to_display(&structure.points[b]),
+                to_display_vector(&structure.points[a]),
+                to_display_vector(&structure.points[b]),
                 EDGE_COLOR.lerp(BACKGROUND, 0.75),
             );
         }
@@ -151,13 +159,13 @@ fn main() {
         for (n, v) in structure.points.iter().enumerate() {
             if structure.dbc.contains_key(&n) {
                 mode.draw_circle_v(
-                    to_display(v),
+                    to_display_vector(v),
                     RADIUS / camera.zoom,
                     STABLE_NODE_COLOR.lerp(BACKGROUND, 0.75),
                 );
             } else {
                 mode.draw_circle_v(
-                    to_display(v),
+                    to_display_vector(v),
                     RADIUS / camera.zoom,
                     NODE_COLOR.lerp(BACKGROUND, 0.75),
                 );
@@ -167,17 +175,21 @@ fn main() {
         if !no_simulate {
             for &(a, b) in &structure.connections {
                 mode.draw_line_v(
-                    to_display(&displaced_points[a]),
-                    to_display(&displaced_points[b]),
+                    to_display_vector(&displaced_points[a]),
+                    to_display_vector(&displaced_points[b]),
                     EDGE_COLOR,
                 );
             }
 
             for (n, v) in displaced_points.iter().enumerate() {
                 if structure.dbc.contains_key(&n) {
-                    mode.draw_circle_v(to_display(v), RADIUS / camera.zoom, STABLE_NODE_COLOR);
+                    mode.draw_circle_v(
+                        to_display_vector(v),
+                        RADIUS / camera.zoom,
+                        STABLE_NODE_COLOR,
+                    );
                 } else {
-                    mode.draw_circle_v(to_display(v), RADIUS / camera.zoom, NODE_COLOR);
+                    mode.draw_circle_v(to_display_vector(v), RADIUS / camera.zoom, NODE_COLOR);
                 }
             }
         }
