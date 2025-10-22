@@ -67,6 +67,7 @@ pub struct BeamStructure {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BeamSimulation {
     pub structure: BeamStructure,
+    #[serde(with = "force_array_as_map")]
     pub forces: Vec<f64>,
 }
 impl BeamSimulation {
@@ -90,5 +91,74 @@ impl BeamSimulation {
         // solve for u using gauss seidel
         stiffness_mat.solve_gauss_seidel(&f[..], &mut u, maximum_iterations, error);
         u
+    }
+}
+
+mod force_array_as_map {
+    use std::{collections::HashMap, fmt};
+
+    use serde::{
+        Deserializer, Serializer,
+        de::{self, SeqAccess, Visitor},
+        ser::SerializeTuple,
+    };
+
+    pub fn serialize<S>(vec: &[f64], serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = HashMap::new();
+        for (n, f) in vec
+            .chunks_exact(2)
+            .enumerate()
+            .filter(|&(_, f)| f[0] != 0. || f[1] != 0.)
+        {
+            map.insert(n, (f[0], f[1]));
+        }
+
+        let mut tuple = serializer.serialize_tuple(2)?;
+        tuple.serialize_element(&(vec.len() * 2))?;
+        tuple.serialize_element(&map)?;
+        tuple.end()
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<f64>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SparseVecVisitor;
+
+        impl<'de> Visitor<'de> for SparseVecVisitor {
+            type Value = Vec<f64>;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a tuple [len, {index: value, ...}]")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let len: usize = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(0, &self))?;
+
+                let map: HashMap<usize, (f64, f64)> = seq
+                    .next_element()?
+                    .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+
+                let mut vec = vec![0.; len * 2];
+                for (i, v) in map {
+                    if i < len {
+                        vec[2 * i] = v.0;
+                        vec[2 * i + 1] = v.1;
+                    }
+                }
+
+                Ok(vec)
+            }
+        }
+
+        deserializer.deserialize_tuple(2, SparseVecVisitor)
     }
 }
