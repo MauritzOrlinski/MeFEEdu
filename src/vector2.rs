@@ -2,10 +2,29 @@ use raylib::core::math::Vector2 as RaylibVec2;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Mul, Sub};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Vector2 {
     pub x: f64,
     pub y: f64,
+}
+
+impl<'de> Deserialize<'de> for Vector2 {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let arr = <[f64; 2]>::deserialize(deserializer)?;
+        Ok(arr.into())
+    }
+}
+
+impl Serialize for Vector2 {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        [self.x, self.y].serialize(serializer)
+    }
 }
 
 impl From<Vector2> for RaylibVec2 {
@@ -13,6 +32,15 @@ impl From<Vector2> for RaylibVec2 {
         RaylibVec2 {
             x: value.x as f32,
             y: value.y as f32,
+        }
+    }
+}
+
+impl From<[f64; 2]> for Vector2 {
+    fn from(value: [f64; 2]) -> Self {
+        Vector2 {
+            x: value[0],
+            y: value[1],
         }
     }
 }
