@@ -70,83 +70,83 @@ pub fn get_camera(
     }
 }
 
-fn draw_fixed_point(
-    d: &mut RaylibDrawHandle,
-    camera: &Camera2D,
-    point: &Vector2,
-    dof_locks: (bool, bool),
-) {
-    let triangle_size = TRIANGLE_SIZE / camera.zoom;
-    match dof_locks {
-        (true, true) => d.draw_triangle_lines(
-            to_display_vector(point),
-            to_display_vector(&(*point + Vector2 { x: -0.8, y: -1. }.mul(triangle_size as f64))),
-            to_display_vector(&(*point - Vector2 { x: 0.8, y: -1. }.mul(triangle_size as f64))),
-            TRIANGLE_COLOR,
-        ),
-        (true, _) => {
-            let v2 = *point + Vector2 { x: -1., y: -0.8 }.mul(triangle_size as f64);
-            let v3 = *point + Vector2 { x: -1., y: 0.8 }.mul(triangle_size as f64);
-            d.draw_triangle_lines(
-                to_display_vector(point),
-                to_display_vector(&v2),
-                to_display_vector(&v3),
-                TRIANGLE_COLOR,
-            );
-            d.draw_circle_v(
-                to_display_vector(
-                    &(v2 + Vector2 {
-                        x: -PULLEY_WHEELS_RADIUS as f64,
-                        y: 0.01 * TRIANGLE_SIZE as f64,
-                    }),
-                ),
-                PULLEY_WHEELS_RADIUS,
-                TRIANGLE_COLOR,
-            );
-            d.draw_circle_v(
-                to_display_vector(
-                    &(v3 + Vector2 {
-                        x: -PULLEY_WHEELS_RADIUS as f64,
-                        y: -0.01 * TRIANGLE_SIZE as f64,
-                    }),
-                ),
-                PULLEY_WHEELS_RADIUS,
-                TRIANGLE_COLOR,
-            );
-        }
-        (_, true) => {
-            let v2 = *point + Vector2 { x: -0.8, y: -1. }.mul(triangle_size as f64);
-            let v3 = *point + Vector2 { x: 0.8, y: -1. }.mul(triangle_size as f64);
-            d.draw_triangle_lines(
-                to_display_vector(point),
-                to_display_vector(&v2),
-                to_display_vector(&v3),
-                TRIANGLE_COLOR,
-            );
-            d.draw_circle_v(
-                to_display_vector(
-                    &(v2 + Vector2 {
-                        x: 0.07 * TRIANGLE_SIZE as f64,
-                        y: -PULLEY_WHEELS_RADIUS as f64,
-                    }),
-                ),
-                PULLEY_WHEELS_RADIUS,
-                TRIANGLE_COLOR,
-            );
-            d.draw_circle_v(
-                to_display_vector(
-                    &(v3 + Vector2 {
-                        x: -0.07 * TRIANGLE_SIZE as f64,
-                        y: -PULLEY_WHEELS_RADIUS as f64,
-                    }),
-                ),
-                PULLEY_WHEELS_RADIUS,
-                TRIANGLE_COLOR,
-            );
-        }
-        _ => (),
-    }
-}
+// fn draw_fixed_point(
+//     d: &mut RaylibDrawHandle,
+//     camera: &Camera2D,
+//     point: &Vector2,
+//     dof_locks: (bool, bool),
+// ) {
+//     let triangle_size = TRIANGLE_SIZE / camera.zoom;
+//     match dof_locks {
+//         (true, true) => d.draw_triangle_lines(
+//             to_display_vector(point),
+//             to_display_vector(&(*point + Vector2 { x: -0.8, y: -1. }.mul(triangle_size as f64))),
+//             to_display_vector(&(*point - Vector2 { x: 0.8, y: -1. }.mul(triangle_size as f64))),
+//             TRIANGLE_COLOR,
+//         ),
+//         (true, _) => {
+//             let v2 = *point + Vector2 { x: -1., y: -0.8 }.mul(triangle_size as f64);
+//             let v3 = *point + Vector2 { x: -1., y: 0.8 }.mul(triangle_size as f64);
+//             d.draw_triangle_lines(
+//                 to_display_vector(point),
+//                 to_display_vector(&v2),
+//                 to_display_vector(&v3),
+//                 TRIANGLE_COLOR,
+//             );
+//             d.draw_circle_v(
+//                 to_display_vector(
+//                     &(v2 + Vector2 {
+//                         x: -PULLEY_WHEELS_RADIUS as f64,
+//                         y: 0.01 * TRIANGLE_SIZE as f64,
+//                     }),
+//                 ),
+//                 PULLEY_WHEELS_RADIUS,
+//                 TRIANGLE_COLOR,
+//             );
+//             d.draw_circle_v(
+//                 to_display_vector(
+//                     &(v3 + Vector2 {
+//                         x: -PULLEY_WHEELS_RADIUS as f64,
+//                         y: -0.01 * TRIANGLE_SIZE as f64,
+//                     }),
+//                 ),
+//                 PULLEY_WHEELS_RADIUS,
+//                 TRIANGLE_COLOR,
+//             );
+//         }
+//         (_, true) => {
+//             let v2 = *point + Vector2 { x: -0.8, y: -1. }.mul(triangle_size as f64);
+//             let v3 = *point + Vector2 { x: 0.8, y: -1. }.mul(triangle_size as f64);
+//             d.draw_triangle_lines(
+//                 to_display_vector(point),
+//                 to_display_vector(&v2),
+//                 to_display_vector(&v3),
+//                 TRIANGLE_COLOR,
+//             );
+//             d.draw_circle_v(
+//                 to_display_vector(
+//                     &(v2 + Vector2 {
+//                         x: 0.07 * TRIANGLE_SIZE as f64,
+//                         y: -PULLEY_WHEELS_RADIUS as f64,
+//                     }),
+//                 ),
+//                 PULLEY_WHEELS_RADIUS,
+//                 TRIANGLE_COLOR,
+//             );
+//             d.draw_circle_v(
+//                 to_display_vector(
+//                     &(v3 + Vector2 {
+//                         x: -0.07 * TRIANGLE_SIZE as f64,
+//                         y: -PULLEY_WHEELS_RADIUS as f64,
+//                     }),
+//                 ),
+//                 PULLEY_WHEELS_RADIUS,
+//                 TRIANGLE_COLOR,
+//             );
+//         }
+//         _ => (),
+//     }
+// }
 
 pub fn draw_structure_fade<I, J>(
     d: &mut RaylibDrawHandle,
@@ -161,9 +161,10 @@ pub fn draw_structure_fade<I, J>(
     J: Fn(usize) -> Color,
 {
     for (n, &(a, b)) in connections.iter().enumerate() {
-        d.draw_line_v(
+        d.draw_line_ex(
             to_display_vector(&points[a]),
             to_display_vector(&points[b]),
+            0.5,
             edge_color(n).lerp(BACKGROUND, fade),
         );
     }
@@ -190,7 +191,7 @@ pub fn draw_structure<I, J>(
     J: Fn(usize) -> Color,
 {
     draw_structure_fade(d, points, connections, camera, node_color, edge_color, 0.);
-    for (&i, &lock) in dbc.iter() {
-        draw_fixed_point(d, camera, &points[i], lock);
-    }
+    // for (&i, &lock) in dbc.iter() {
+    //     draw_fixed_point(d, camera, &points[i], lock);
+    // }
 }
