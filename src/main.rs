@@ -48,6 +48,7 @@ where
         },
     )
 }
+
 fn main() {
     let Args {
         file_path,
@@ -58,21 +59,7 @@ fn main() {
     let json_blob: String =
         fs::read_to_string(file_path).expect("Should have been able to read the file");
 
-    let beam_sim: BeamSimulation = serde_json::from_str(&json_blob).unwrap();
-    let solution = if !no_simulate {
-        beam_sim.simulate(maximum_iterations, error_constraint)
-    } else {
-        vec![]
-    };
-    println!("Displacements: {solution:?}");
-
-    let structure = beam_sim.structure;
-
-    let displaced_points: Vec<_> = solution
-        .chunks_exact(2)
-        .zip(structure.points.iter())
-        .map(|(values, &vector)| vector + Vector2::new(values[0], values[1]))
-        .collect();
+    let mut beam_sim: BeamSimulation = serde_json::from_str(&json_blob).unwrap();
 
     let (mut rl, thread) = raylib::init()
         .size(W, H)
@@ -80,19 +67,58 @@ fn main() {
         .resizable()
         .build();
 
-    let structure_extents =
-        get_point_cloud_extents(displaced_points.iter().chain(structure.points.iter()));
+    let mut drag_start = None;
 
-    let node_color = |n| {
-        if structure.dbc.contains_key(&n) {
-            FIXED_NODE_COLOR
-        } else {
-            NODE_COLOR
-        }
-    };
+    beam_sim.forces = beam_sim.forces.iter().map(|_| 0.).collect();
+    let forces = beam_sim.forces.clone();
 
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
+
+        beam_sim.forces = forces
+            .chunks_exact(2)
+            .enumerate()
+            .map(|(i, v)| {
+                let v = Vector2::new(v[0], v[1]);
+                if let Some((start_i, _, delta)) = drag_start
+                    && i == start_i
+                {
+                    let mut delta: Vector2 = delta;
+                    delta.x *= -1.;
+                    delta = delta * 5000.;
+
+                    v + delta
+                } else {
+                    v
+                }
+            })
+            .flat_map(|e| [e.x, e.y])
+            .collect();
+
+        let solution = if !no_simulate {
+            beam_sim.simulate(maximum_iterations, error_constraint)
+        } else {
+            vec![]
+        };
+
+        let structure = &beam_sim.structure;
+
+        let displaced_points: Vec<_> = solution
+            .chunks_exact(2)
+            .zip(structure.points.iter())
+            .map(|(values, &vector)| vector + Vector2::new(values[0], values[1]))
+            .collect();
+
+        let structure_extents =
+            get_point_cloud_extents(displaced_points.iter().chain(structure.points.iter()));
+
+        let node_color = |n| {
+            if structure.dbc.contains_key(&n) {
+                FIXED_NODE_COLOR
+            } else {
+                NODE_COLOR
+            }
+        };
 
         d.clear_background(BACKGROUND);
 
@@ -101,6 +127,34 @@ fn main() {
             d.get_screen_width(),
             d.get_screen_height(),
         );
+
+        if d.is_mouse_button_down(raylib::ffi::MouseButton::MOUSE_BUTTON_LEFT)
+            && drag_start.is_none()
+        {
+            let mut mouse_pos = d.get_screen_to_world2D(d.get_mouse_position(), camera);
+            mouse_pos.y *= -1.;
+
+            for (i, node) in displaced_points.iter().enumerate() {
+                if node.distance_to(mouse_pos.into()) < 10. {
+                    drag_start = Some((i, *node, Vector2::new(0., 0.)));
+                    break;
+                }
+            }
+        }
+
+        if let Some((start_i, start_pos, _)) = drag_start
+            && d.is_mouse_button_up(raylib::ffi::MouseButton::MOUSE_BUTTON_LEFT)
+        {
+            let mouse_pos = d.get_screen_to_world2D(d.get_mouse_position(), camera);
+            println!("Drag from {start_i} to {mouse_pos:?}");
+
+            let delta = start_pos - mouse_pos.into();
+
+            beam_sim.forces[2 * start_i] = -delta.x * 5000.;
+            beam_sim.forces[2 * start_i + 1] = delta.y * 5000.;
+
+            drag_start = None;
+        }
 
         let mut mode = d.begin_mode2D(camera);
 
@@ -133,5 +187,17 @@ fn main() {
                 },
             );
         }
+
+        drag_start = drag_start.map(|(i, start, _)| {
+            let mut mouse_position = mode.get_screen_to_world2D(mode.get_mouse_position(), camera);
+            mouse_position.y *= -1.;
+            let mut delta = start - mouse_position.into();
+
+            delta.y *= -1.;
+
+            (i, start, delta)
+        });
+
+        println!("{drag_start:?}");
     }
 }

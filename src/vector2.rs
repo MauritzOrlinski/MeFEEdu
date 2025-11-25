@@ -27,6 +27,15 @@ impl Serialize for Vector2 {
     }
 }
 
+impl From<RaylibVec2> for Vector2 {
+    fn from(value: RaylibVec2) -> Self {
+        Self {
+            x: value.x as f64,
+            y: value.y as f64,
+        }
+    }
+}
+
 impl From<Vector2> for RaylibVec2 {
     fn from(value: Vector2) -> Self {
         RaylibVec2 {
